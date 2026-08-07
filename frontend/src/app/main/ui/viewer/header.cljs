@@ -8,10 +8,12 @@
   (:require-macros [app.main.style :as stl])
   (:require
    [app.common.data.macros :as dm]
+   [app.main.data.common :as dc]
    [app.main.data.modal :as modal]
    [app.main.data.shortcuts :as scd]
    [app.main.data.viewer :as dv]
    [app.main.data.viewer.shortcuts :as sc]
+   [app.main.refs :as refs]
    [app.main.store :as st]
    [app.main.ui.components.dropdown :refer [dropdown]]
    [app.main.ui.exports.assets :refer [progress-widget]]
@@ -121,7 +123,9 @@
 
 (mf/defc header-options
   [{:keys [section zoom page file index permissions interactions-mode share]}]
-  (let [fullscreen?    (mf/deref fullscreen-ref)
+  (let [profile         (mf/deref refs/profile)
+        platform-admin? (true? (:is-admin profile))
+        fullscreen?    (mf/deref fullscreen-ref)
 
         toggle-fullscreen
         (mf/use-fn
@@ -135,8 +139,9 @@
 
         open-share-dialog
         (mf/use-fn
-         (mf/deps page)
+         (mf/deps page file)
          (fn []
+           (st/emit! (dc/fetch-share-links (:id file)))
            (modal/show! :share-link {:page page :file file})
            (modal/disallow-click-outside!)))
 
@@ -158,12 +163,14 @@
 
         handle-zoom-fit
         (mf/use-fn
-         #(st/emit! dv/zoom-to-fit))]
-    (mf/with-effect [permissions share]
-      (when (and
-             (:in-team permissions)
-             (:is-admin permissions)
-             share)
+         #(st/emit! dv/zoom-to-fit))
+
+        share-opened* (mf/use-ref false)]
+    (mf/with-effect [platform-admin? share]
+      (when (and platform-admin?
+                 share
+                 (not (mf/ref-val share-opened*)))
+        (mf/set-ref-val! share-opened* true)
         (open-share-dialog)))
 
     [:div {:class (stl/css :options-zone)}
@@ -198,7 +205,7 @@
              :on-click toggle-fullscreen}
       deprecated-icon/expand]
 
-     (when (:in-team permissions)
+     (when platform-admin?
        [:button {:on-click open-share-dialog
                  :class (stl/css :share-btn)}
         (tr "labels.share")])

@@ -42,15 +42,7 @@
   []
   (let [profile (mf/deref refs/profile)
         form    (fm/use-form :schema schema:profile-form
-                             :initial profile)
-
-        on-show-change-email
-        (mf/use-fn
-         #(modal/show! :change-email {}))
-
-        on-show-delete-account
-        (mf/use-fn
-         #(modal/show! :delete-account {}))]
+                             :initial profile)]
 
     [:& fm/form {:on-submit on-submit
                  :form form
@@ -61,29 +53,17 @@
         :name :fullname
         :label (tr "dashboard.your-name")}]]
 
-     [:div {:class (stl/css :fields-row)
-            :on-click on-show-change-email}
+     [:div {:class (stl/css :fields-row)}
       [:& fm/input
        {:type "email"
         :name :email
         :disabled true
-        :label (tr "dashboard.your-email")}]
-
-      [:div {:class (stl/css :options)}
-       [:div.change-email
-        [:a {:on-click on-show-change-email}
-         (tr "dashboard.change-email")]]]]
+        :label (tr "dashboard.your-email")}]]
 
      [:> fm/submit-button*
       {:label (tr "dashboard.save-settings")
        :disabled (empty? (:touched @form))
-       :class (stl/css :btn-primary)}]
-
-     [:div {:class (stl/css :links)}
-      [:div {:class (stl/css :link-item)}
-       [:a {:on-click on-show-delete-account
-            :data-testid "remove-acount-btn"}
-        (tr "dashboard.remove-account")]]]]))
+       :class (stl/css :btn-primary)}]]))
 
 ;; --- Profile Photo Form
 

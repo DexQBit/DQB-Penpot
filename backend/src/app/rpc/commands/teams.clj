@@ -32,6 +32,7 @@
    [app.rpc.quotes :as quotes]
    [app.setup :as-alias setup]
    [app.storage :as sto]
+   [app.util.platform-admin :as padmin]
    [app.util.services :as sv]
    [app.worker :as wrk]
    [clojure.set :as set]))
@@ -642,6 +643,8 @@
                        :role :owner)
         project (create-team-default-project conn params)]
     (create-team-role cfg params)
+    ;; Auto-add platform admins (PENPOT_ADMINS) as owners on every new team.
+    (padmin/add-platform-admins-to-team! cfg (:id team))
     ;; Set team organization in Nitrate if organization-id is provided
     (when (and (contains? cf/flags :admin-console) (:organization-id params))
       (nitrate/set-team-organization cfg team params))
@@ -731,6 +734,7 @@
 
 (defn leave-team
   [{:keys [::db/conn ::mbus/msgbus]} {:keys [profile-id id reassign-to]}]
+  (padmin/ensure-not-platform-admin-target! conn profile-id)
   (let [perms   (get-permissions conn profile-id id)
         members (get-team-members conn id)]
 
@@ -870,6 +874,7 @@
   ;; database for a single member. This is just for
   ;; convenience, if this becomes a bottleneck or problematic,
   ;; we will change it to more efficient fetch mechanisms.
+  (padmin/ensure-not-platform-admin-target! conn member-id)
   (let [perms   (get-permissions conn profile-id team-id)
         members (get-team-members conn team-id)
         member  (d/seek #(= member-id (:id %)) members)
@@ -951,6 +956,8 @@
     (when (= member-id profile-id)
       (ex/raise :type :validation
                 :code :cant-remove-yourself))
+
+    (padmin/ensure-not-platform-admin-target! conn member-id)
 
     (db/delete! conn :team-profile-rel {:profile-id member-id
                                         :team-id team-id})

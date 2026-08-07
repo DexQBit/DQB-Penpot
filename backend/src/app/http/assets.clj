@@ -31,6 +31,7 @@
 (def ^:private public-buckets
   #{"file-media-object"
     "file-object-thumbnail"
+    "file-thumbnail"
     "team-font-variant"
     "file-data-fragment"
     "organization"})

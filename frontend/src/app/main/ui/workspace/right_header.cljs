@@ -9,6 +9,7 @@
   (:require
    [app.main.data.common :as dcm]
    [app.main.data.event :as ev]
+   [app.main.data.modal :as modal]
    [app.main.data.shortcuts :as scd]
    [app.main.data.team :as dtm]
    [app.main.data.workspace :as dw]
@@ -135,7 +136,10 @@
         input-ref         (mf/use-ref nil)
 
         team              (mf/deref refs/team)
-        permissions       (get team :permissions)
+        profile           (mf/deref refs/profile)
+        file              (mf/deref refs/file)
+        page              (mf/deref refs/workspace-page)
+        platform-admin?   (true? (:is-admin profile))
 
         has-unread-comments?
         (mf/with-memo [threads-map file-id]
@@ -143,11 +147,6 @@
                (some #(and (= (:file-id %) file-id)
                            (pos? (:count-unread-comments %))))
                (boolean)))
-
-        display-share-button?
-        (and (not (:is-default team))
-             (or (:is-admin permissions)
-                 (:is-owner permissions)))
 
         nav-to-viewer
         (mf/use-fn
@@ -187,12 +186,21 @@
            (st/emit! (-> (dwh/initialize-history)
                          (vary-meta assoc ::ev/origin "workspace-header")))))
 
-        open-share-dialog
+        open-invite-dialog
         (mf/use-fn
          (mf/deps team)
          (fn []
            (st/emit! (dtm/check-and-invite-members {:team-id (:id team)
-                                                    :origin :workspace}))))]
+                                                    :origin :workspace}))))
+
+        open-prototype-share-dialog
+        (mf/use-fn
+         (mf/deps file page)
+         (fn []
+           (when (and file page)
+             (st/emit! (dcm/fetch-share-links (:id file)))
+             (modal/show! :share-link {:page page :file file})
+             (modal/disallow-click-outside!))))]
 
     (mf/with-effect [editing?]
       (when ^boolean editing?
@@ -237,11 +245,17 @@
           :on-click toggle-history}
          deprecated-icon/history]])
 
-     (when display-share-button?
+     (when platform-admin?
        [:a {:class (stl/css :viewer-btn)
-            :title (tr "workspace.header.share")
-            :on-click open-share-dialog}
+            :title (tr "workspace.header.invite-team")
+            :on-click open-invite-dialog}
         deprecated-icon/share])
+
+     (when platform-admin?
+       [:a {:class (stl/css :viewer-btn)
+            :title (tr "workspace.header.share-prototype")
+            :on-click open-prototype-share-dialog}
+        deprecated-icon/open-link])
 
      [:a {:class (stl/css :viewer-btn)
           :title (tr "workspace.header.viewer" (get-tt :open-viewer))

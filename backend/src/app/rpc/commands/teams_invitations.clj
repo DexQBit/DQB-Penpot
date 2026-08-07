@@ -21,6 +21,7 @@
    [app.db :as db]
    [app.email :as eml]
    [app.email.blacklist :as email.blacklist]
+   [app.email.whitelist :as email.whitelist]
    [app.loggers.audit :as audit]
    [app.main :as-alias main]
    [app.nitrate :as nitrate]
@@ -32,6 +33,7 @@
    [app.rpc.quotes :as quotes]
    [app.setup :as-alias setup]
    [app.tokens :as tokens]
+   [app.util.platform-admin :as platform-admin]
    [app.util.services :as sv]
    [cuerdas.core :as str]))
 
@@ -163,6 +165,12 @@
       (ex/raise :type :restriction
                 :code :email-domain-is-not-allowed
                 :hint "email domain is in the blacklist"))
+
+    (when (and (email.whitelist/enabled? cfg)
+               (not (email.whitelist/contains? cfg email)))
+      (ex/raise :type :restriction
+                :code :email-domain-is-not-allowed
+                :hint "email domain is not in the whitelist"))
 
     ;; When nitrate is active and the team belongs to an organization, check that
     ;; the email is already an organization member unless the organization explicitly allows adding anybody.
@@ -465,8 +473,8 @@
    ::doc/module :teams
    ::sm/params schema:create-team-invitations}
   [cfg {:keys [::rpc/profile-id team-id role emails] :as params}]
-  (let [perms    (teams/get-permissions cfg profile-id team-id)
-        profile  (db/get-by-id cfg :profile profile-id)
+  (platform-admin/check-platform-admin! cfg profile-id)
+  (let [profile  (db/get-by-id cfg :profile profile-id)
         ;; Determine which format is being used
         using-emails-format? (and emails role)
         ;; Handle both parameter formats
@@ -477,10 +485,6 @@
         invitation-count (if using-emails-format?
                            (count emails)
                            (count (:invitations params)))]
-
-    (when-not (:is-admin perms)
-      (ex/raise :type :validation
-                :code :insufficient-permissions))
 
     (when (> invitation-count max-invitations-by-request-threshold)
       (ex/raise :type :validation
@@ -534,6 +538,7 @@
    ::sm/params schema:create-team-with-invitations
    ::db/transaction true}
   [{:keys [::db/conn] :as cfg} {:keys [::rpc/profile-id emails role name] :as params}]
+  (platform-admin/check-platform-admin! cfg profile-id)
   (let [features (-> (cfeat/get-enabled-features cf/flags)
                      (cfeat/check-client-features! (:features params)))
 
@@ -618,18 +623,14 @@
    ::doc/module :teams
    ::sm/params schema:update-team-invitation-role
    ::db/transaction true}
-  [{:keys [::db/conn]} {:keys [::rpc/profile-id team-id email role] :as params}]
-  (let [perms (teams/get-permissions conn profile-id team-id)]
+  [{:keys [::db/conn] :as cfg} {:keys [::rpc/profile-id team-id email role] :as params}]
+  (platform-admin/check-platform-admin! cfg profile-id)
 
-    (when-not (:is-admin perms)
-      (ex/raise :type :validation
-                :code :insufficient-permissions))
+  (db/update! conn :team-invitation
+              {:role (name role) :updated-at (ct/now)}
+              {:team-id team-id :email-to (profile/clean-email email)})
 
-    (db/update! conn :team-invitation
-                {:role (name role) :updated-at (ct/now)}
-                {:team-id team-id :email-to (profile/clean-email email)})
-
-    nil))
+  nil)
 
 ;; --- Mutation: Delete invitation
 
@@ -642,18 +643,14 @@
   {::doc/added "1.17"
    ::sm/params schema:delete-team-invition
    ::db/transaction true}
-  [{:keys [::db/conn]} {:keys [::rpc/profile-id team-id email] :as params}]
-  (let [perms (teams/get-permissions conn profile-id team-id)]
+  [{:keys [::db/conn] :as cfg} {:keys [::rpc/profile-id team-id email] :as params}]
+  (platform-admin/check-platform-admin! cfg profile-id)
 
-    (when-not (:is-admin perms)
-      (ex/raise :type :validation
-                :code :insufficient-permissions))
-
-    (let [invitation (db/delete! conn :team-invitation
-                                 {:team-id team-id
-                                  :email-to (profile/clean-email email)}
-                                 {::db/return-keys true})]
-      (rph/wrap nil {::audit/props {:invitation-id (:id invitation)}}))))
+  (let [invitation (db/delete! conn :team-invitation
+                               {:team-id team-id
+                                :email-to (profile/clean-email email)}
+                               {::db/return-keys true})]
+    (rph/wrap nil {::audit/props {:invitation-id (:id invitation)}})))
 
 
 ;; --- Mutation: Request Team Invitation

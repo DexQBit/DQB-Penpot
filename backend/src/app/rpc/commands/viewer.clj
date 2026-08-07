@@ -56,7 +56,7 @@
       (assoc :can-read true)))
 
 (defn- get-view-only-bundle
-  [{:keys [::db/conn] :as cfg} {:keys [profile-id file-id ::perms] :as params}]
+  [{:keys [::db/conn] :as cfg} {:keys [profile-id file-id share-id ::perms] :as params}]
   (let [file    (bfc/get-file cfg file-id)
 
         project (db/get conn :project
@@ -66,9 +66,11 @@
         team    (-> (db/get conn :team {:id (:team-id project)})
                     (teams/decode-row))
 
-        members    (cond->> (teams/get-team-members conn (:team-id project))
-                     (= :share-link (:type perms))
-                     (mapv anonymize-member))
+        share-link-access? (= :share-link (:type perms))
+
+        members    (if share-link-access?
+                     []
+                     (teams/get-team-members conn (:team-id project)))
 
         member-ids (into #{} (map :id) members)
 
@@ -79,7 +81,7 @@
                     (cfeat/check-file-features! (:features file)))
 
         file    (cond-> file
-                  (= :share-link (:type perms))
+                  share-link-access?
                   (update :data remove-not-allowed-pages (:pages perms))
 
                   :always
@@ -89,20 +91,26 @@
                      (mapv (fn [{:keys [id] :as lib}]
                              (merge lib (bfc/get-file cfg id)))))
 
-        links   (->> (db/query conn :share-link {:file-id file-id})
-                     (mapv (fn [row]
-                             (-> row
-                                 (update :pages db/decode-pgarray #{})
-                                 ;; NOTE: the flags are deprecated but are still present
-                                 ;; on the table on old rows. The flags are pgarray and
-                                 ;; for avoid decoding it (because they are no longer used
-                                 ;; on frontend) we just dissoc the column attribute from
-                                 ;; row.
-                                 (dissoc :flags)))))
+        links   (if share-link-access?
+                  (if-let [link (some-> (db/get* conn :share-link {:id share-id :file-id file-id})
+                                        (dissoc :flags)
+                                        (update :pages db/decode-pgarray #{}))]
+                    [link]
+                    [])
+                  (->> (db/query conn :share-link {:file-id file-id})
+                       (mapv (fn [row]
+                               (-> row
+                                   (update :pages db/decode-pgarray #{})
+                                   (dissoc :flags))))))
 
         fonts   (db/query conn :team-font-variant
                           {:team-id (:id team)
-                           :deleted-at nil})]
+                           :deleted-at nil})
+
+        ;; Avoid leaking team member identity via team row for anonymous share access.
+        team    (cond-> (assoc team :permissions perms)
+                  share-link-access?
+                  (dissoc :photo-id))]
 
     {:users members
      :profiles members
@@ -111,7 +119,7 @@
      :share-links links
      :libraries libs
      :file file
-     :team (assoc team :permissions perms)
+     :team team
      :permissions perms}))
 
 (def schema:get-view-only-bundle
@@ -130,7 +138,8 @@
              (let [perms  (perms/get-file-read-permissions system profile-id file-id share-id)
                    params (-> params
                               (assoc ::perms perms)
-                              (assoc :profile-id profile-id))]
+                              (assoc :profile-id profile-id)
+                              (assoc :share-id share-id))]
 
                ;; When we have neither profile nor share, we just return a not
                ;; found response to the user.

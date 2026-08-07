@@ -242,6 +242,21 @@ msgstr "(current)"
 msgid "common.share-link.destroy-link"
 msgstr "Destroy link"
 
+msgid "common.share-link.expires"
+msgstr "Link expires"
+
+msgid "common.share-link.expires-24h"
+msgstr "In 24 hours"
+
+msgid "common.share-link.expires-7d"
+msgstr "In 7 days"
+
+msgid "common.share-link.expires-30d"
+msgstr "In 30 days"
+
+msgid "common.share-link.expires-never"
+msgstr "Never"
+
 #: src/app/main/ui/viewer/share_link.cljs:222
 msgid "common.share-link.get-link"
 msgstr "Get link"
@@ -7123,6 +7138,14 @@ msgstr "Saving"
 #: src/app/main/ui/workspace/right_header.cljs:237
 msgid "workspace.header.share"
 msgstr "Share"
+
+#: src/app/main/ui/workspace/right_header.cljs:252
+msgid "workspace.header.invite-team"
+msgstr "Invite to team"
+
+#: src/app/main/ui/workspace/right_header.cljs:258
+msgid "workspace.header.share-prototype"
+msgstr "Share prototype"
 
 #: src/app/main/ui/workspace/right_header.cljs:48, src/app/main/ui/workspace/right_header.cljs:53
 #, unused
