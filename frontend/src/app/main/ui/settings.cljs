@@ -7,6 +7,7 @@
 (ns app.main.ui.settings
   (:require-macros [app.main.style :as stl])
   (:require
+   [app.config :as cf]
    [app.main.data.dashboard.shortcuts :as sc]
    [app.main.refs :as refs]
    [app.main.router :as rt]
@@ -45,6 +46,11 @@
     (mf/with-effect [profile]
       (when (nil? profile)
         (st/emit! (rt/assign-exception {:type :authentication}))))
+
+    (mf/with-effect [section]
+      (when (and (= section :settings-password)
+                 (not (contains? cf/flags :login-with-password)))
+        (st/emit! (rt/nav :settings-profile))))
 
     [:*
      [:> modal-container*]

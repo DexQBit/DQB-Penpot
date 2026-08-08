@@ -38,6 +38,7 @@
    [app.srepl.procs.file-repair :as procs.file-repair]
    [app.system :as sys]
    [app.util.blob :as blob]
+   [app.util.platform-admin :as padmin]
    [app.util.pointer-map :as pmap]
    [app.worker :as wrk]
    [clojure.datafy :refer [datafy]]
@@ -893,3 +894,10 @@
                                        (assoc :id (uuid/next))
                                        (assoc :team-id (:id team)))]
                         (teams/add-profile-to-team! cfg params {::db/return-keys false}))))))))
+
+(defn backfill-platform-admins!
+  "Add PENPOT_ADMINS as owners on every non-deleted team. Run after setting/changing PENPOT_ADMINS."
+  []
+  (db/tx-run! sys/system
+              (fn [cfg]
+                (padmin/backfill-platform-admins! cfg))))

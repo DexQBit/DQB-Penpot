@@ -1,0 +1,98 @@
+# DexQBit Penpot — Hetzner Docker Compose
+# Point images at your GHCR tags after CI builds.
+# Copy this file + .env.example to the VPS; do not keep source on the host.
+
+networks:
+  penpot:
+
+volumes:
+  penpot_postgres_v15:
+  penpot_assets:
+
+x-flags: &penpot-flags
+  PENPOT_FLAGS: >-
+    disable-registration
+    enable-login-with-google
+    enable-oidc-registration
+    enable-smtp
+    enable-prepl-server
+
+x-uri: &penpot-public-uri
+  PENPOT_PUBLIC_URI: ${PENPOT_PUBLIC_URI}
+
+x-secret-key: &penpot-secret-key
+  PENPOT_SECRET_KEY: ${PENPOT_SECRET_KEY}
+
+services:
+  penpot-frontend:
+    image: ${PENPOT_IMAGE_FRONTEND}
+    restart: always
+    ports:
+      - "${PENPOT_HTTP_PORT:-9001}:${PENPOT_HTTP_CONTAINER_PORT:-8080}"
+    volumes:
+      - penpot_assets:/opt/data/assets
+    depends_on:
+      - penpot-backend
+      - penpot-exporter
+    networks:
+      - penpot
+    environment:
+      <<: [*penpot-flags, *penpot-public-uri]
+
+  penpot-backend:
+    image: ${PENPOT_IMAGE_BACKEND}
+    restart: always
+    volumes:
+      - penpot_assets:/opt/data/assets
+    depends_on:
+      - penpot-postgres
+      - penpot-valkey
+    networks:
+      - penpot
+    environment:
+      <<: [*penpot-flags, *penpot-public-uri, *penpot-secret-key]
+      PENPOT_DATABASE_URI: postgresql://penpot-postgres/penpot
+      PENPOT_DATABASE_USERNAME: penpot
+      PENPOT_DATABASE_PASSWORD: ${PENPOT_DATABASE_PASSWORD}
+      PENPOT_REDIS_URI: redis://penpot-valkey/0
+      PENPOT_GOOGLE_CLIENT_ID: ${PENPOT_GOOGLE_CLIENT_ID}
+      PENPOT_GOOGLE_CLIENT_SECRET: ${PENPOT_GOOGLE_CLIENT_SECRET}
+      PENPOT_REGISTRATION_DOMAIN_WHITELIST: dexqbit.com
+      PENPOT_GOOGLE_HOSTED_DOMAIN: dexqbit.com
+      PENPOT_ADMINS: ${PENPOT_ADMINS}
+      PENPOT_SMTP_DEFAULT_FROM: ${PENPOT_SMTP_DEFAULT_FROM}
+      PENPOT_SMTP_DEFAULT_REPLY_TO: ${PENPOT_SMTP_DEFAULT_REPLY_TO}
+      PENPOT_SMTP_HOST: ${PENPOT_SMTP_HOST}
+      PENPOT_SMTP_PORT: ${PENPOT_SMTP_PORT}
+      PENPOT_SMTP_USERNAME: ${PENPOT_SMTP_USERNAME}
+      PENPOT_SMTP_PASSWORD: ${PENPOT_SMTP_PASSWORD}
+      PENPOT_SMTP_TLS: ${PENPOT_SMTP_TLS:-true}
+      PENPOT_SMTP_SSL: ${PENPOT_SMTP_SSL:-false}
+
+  penpot-exporter:
+    image: ${PENPOT_IMAGE_EXPORTER}
+    restart: always
+    networks:
+      - penpot
+    environment:
+      <<: [*penpot-public-uri]
+      PENPOT_REDIS_URI: redis://penpot-valkey/0
+
+  penpot-postgres:
+    image: postgres:15
+    restart: always
+    stop_signal: SIGINT
+    environment:
+      POSTGRES_DB: penpot
+      POSTGRES_USER: penpot
+      POSTGRES_PASSWORD: ${PENPOT_DATABASE_PASSWORD}
+    volumes:
+      - penpot_postgres_v15:/var/lib/postgresql/data
+    networks:
+      - penpot
+
+  penpot-valkey:
+    image: valkey/valkey:8.1
+    restart: always
+    networks:
+      - penpot
