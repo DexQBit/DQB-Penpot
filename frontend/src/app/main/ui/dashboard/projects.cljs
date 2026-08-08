@@ -321,10 +321,7 @@
         permisions      (:permissions team)
 
         can-edit        (:can-edit permisions)
-        can-invite      (dnt/can-send-invitations?
-                         {:organization (:organization team)
-                          :profile-id (:id profile)
-                          :team-permissions permisions})
+        can-invite      (true? (:is-admin profile))
 
         show-team-hero* (mf/use-state #(get storage/global ::show-team-hero true))
         show-team-hero? (deref show-team-hero*)

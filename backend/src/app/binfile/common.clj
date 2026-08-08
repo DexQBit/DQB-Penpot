@@ -390,7 +390,9 @@
    (let [perms  (get-file-permissions conn profile-id file-id)
          ldata  (some-> (db/get* conn :share-link {:id share-id :file-id file-id})
                         (dissoc :flags)
-                        (update :pages db/decode-pgarray #{}))]
+                        (update :pages db/decode-pgarray #{}))
+         expired? (and (some? (:expires-at ldata))
+                       (ct/is-after? (ct/now) (:expires-at ldata)))]
 
      ;; NOTE: in a future when share-link becomes more powerful and
      ;; will allow us specify which parts of the app is available, we
@@ -398,12 +400,14 @@
      ;; this flags to the frontend.
      (cond
        (some? perms) perms
-       (some? ldata) {:type :share-link
-                      :can-read true
-                      :pages (:pages ldata)
-                      :is-logged (some? profile-id)
-                      :who-comment (:who-comment ldata)
-                      :who-inspect (:who-inspect ldata)}))))
+       (and (some? ldata) (not expired?))
+       {:type :share-link
+        :can-read true
+        :pages (:pages ldata)
+        :is-logged (some? profile-id)
+        :who-comment (:who-comment ldata)
+        :who-inspect (:who-inspect ldata)
+        :share-id share-id}))))
 
 
 (defn get-project

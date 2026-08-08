@@ -45,6 +45,7 @@
    [app.main.ui.workspace.tokens.themes.create-modal]
    [app.main.ui.workspace.viewport :refer [viewport*]]
    [app.main.ui.workspace.webgl-unavailable-modal]
+   [app.main.ui.viewer.share-link]
    [app.util.debug :as dbg]
    [app.util.dom :as dom]
    [app.util.i18n :as i18n :refer [tr]]

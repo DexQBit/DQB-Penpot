@@ -26,8 +26,7 @@
    [app.main.ui.frame-preview :as frame-preview]
    [app.main.ui.nitrate.entry :as nitrate-entry]
    [app.main.ui.notifications :as notifications]
-   [app.main.ui.onboarding.questions :refer [questions-modal]]
-   [app.main.ui.onboarding.team-choice :refer [onboarding-team-modal*]]
+   [app.main.ui.onboarding.name :refer [name-modal]]
    [app.main.ui.releases :refer [release-notes-modal]]
    [app.main.ui.static :as static]
    [app.util.dom :as dom]
@@ -159,18 +158,10 @@
         team    (mf/deref refs/team)
         nitrate-entry-active? (dnt/nitrate-entry-popup-pending?)
 
-        show-question-modal?
+        show-name-modal?
         (and (contains? cf/flags :onboarding)
              (not nitrate-entry-active?)
-             (not (:onboarding-viewed props))
-             (not (contains? props :onboarding-questions)))
-
-        show-team-modal?
-        (and (contains? cf/flags :onboarding)
-             (not nitrate-entry-active?)
-             (not (:onboarding-viewed props))
-             (not (contains? props :onboarding-team-id))
-             (:is-default team))
+             (not (:onboarding-viewed props)))
 
         show-release-modal?
         (and (contains? cf/flags :onboarding)
@@ -245,11 +236,8 @@
           #_[:> app.main.ui.onboarding.team-choice/onboarding-team-modal*]
 
           (cond
-            show-question-modal?
-            [:& questions-modal]
-
-            show-team-modal?
-            [:> onboarding-team-modal* {:go-to-team true}]
+            show-name-modal?
+            [:& name-modal]
 
             show-release-modal?
             [:& release-notes-modal {:version (:main cf/version)}])
@@ -273,11 +261,8 @@
          [:? {}
           (when (cf/external-feature-flag "onboarding-03" "test")
             (cond
-              show-question-modal?
-              [:& questions-modal]
-
-              show-team-modal?
-              [:> onboarding-team-modal* {:go-to-team false}]
+              show-name-modal?
+              [:& name-modal]
 
               show-release-modal?
               [:& release-notes-modal {:version (:main cf/version)}]))

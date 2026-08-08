@@ -23,6 +23,7 @@
    [app.rpc.helpers :as rph]
    [app.rpc.permissions :as perms]
    [app.rpc.quotes :as quotes]
+   [app.util.platform-admin :as padmin]
    [app.util.services :as sv]
    [app.worker :as wrk]))
 
@@ -303,7 +304,7 @@
    ::webhooks/event? true
    ::db/transaction true}
   [{:keys [::db/conn]} {:keys [::rpc/profile-id id] :as params}]
-  (check-edition-permissions! conn profile-id id)
+  (padmin/check-platform-admin! conn profile-id)
   (let [team    (teams/get-team conn
                                 :profile-id profile-id
                                 :project-id id)

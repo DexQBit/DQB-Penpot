@@ -39,6 +39,21 @@
     (update [_ state]
       (update state :share-links (fnil conj []) link))))
 
+(defn share-links-fetched
+  [links]
+  (ptk/reify ::share-links-fetched
+    ptk/UpdateEvent
+    (update [_ state]
+      (assoc state :share-links links))))
+
+(defn fetch-share-links
+  [file-id]
+  (ptk/reify ::fetch-share-links
+    ptk/WatchEvent
+    (watch [_ _ _]
+      (->> (rp/cmd! :get-file-share-links {:file-id file-id})
+           (rx/map share-links-fetched)))))
+
 (defn create-share-link
   [params]
   (ptk/reify ::create-share-link

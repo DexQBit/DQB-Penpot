@@ -14,6 +14,7 @@
    [app.main.data.modal :as modal]
    [app.main.data.notifications :as ntf]
    [app.main.repo :as rp]
+   [app.main.refs :as refs]
    [app.main.router :as rt]
    [app.main.store :as st]
    [app.main.ui.components.context-menu-a11y :refer [context-menu*]]
@@ -71,6 +72,9 @@
         file             (first files)
         file-count       (count files)
         multi?           (> file-count 1)
+
+        profile          (mf/deref refs/profile)
+        platform-admin?  (true? (:is-admin profile))
 
         current-team-id  (mf/use-ctx ctx/current-team-id)
         teams*           (mf/use-state nil)
@@ -264,9 +268,10 @@
             [{:name    (tr "dashboard.file-menu.restore-files-option" (i18n/c file-count))
               :id      "restore-file"
               :handler on-restore-immediately}
-             {:name    (tr "dashboard.file-menu.delete-files-permanently-option" (i18n/c file-count))
-              :id      "delete-file"
-              :handler on-delete-immediately}]
+             (when platform-admin?
+               {:name    (tr "dashboard.file-menu.delete-files-permanently-option" (i18n/c file-count))
+                :id      "delete-file"
+                :handler on-delete-immediately})]
             (if multi?
               [(when can-edit
                  {:name    (tr "dashboard.duplicate-multi" file-count)
@@ -287,7 +292,7 @@
                   :id      "file-unpublish-multi"
                   :handler on-del-shared})
 
-               (when (and (not is-lib-page?) can-edit)
+               (when (and (not is-lib-page?) can-edit platform-admin?)
                  {:name    :separator}
                  {:name    (tr "labels.delete-multi-files" file-count)
                   :id      "file-delete-multi"
@@ -330,10 +335,10 @@
                 :id      "download-binary-file"
                 :handler on-export-binary-files}
 
-               (when (and (not is-lib-page?) (not is-search-page?) can-edit)
+               (when (and (not is-lib-page?) (not is-search-page?) can-edit platform-admin?)
                  {:name   :separator})
 
-               (when (and (not is-lib-page?) (not is-search-page?) can-edit)
+               (when (and (not is-lib-page?) (not is-search-page?) can-edit platform-admin?)
                  {:name    (tr "labels.delete")
                   :id      "file-delete"
                   :handler on-delete})]))]

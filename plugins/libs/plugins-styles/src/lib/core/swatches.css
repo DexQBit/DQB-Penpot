@@ -27,17 +27,17 @@
   /*ACCENT*/
 
   /*dark*/
-  --da-primary: #7efff5;
-  --da-primary-muted: #426158;
+  --da-primary: #8095ff;
+  --da-primary-muted: #8095ff;
   --da-secondary: #bb97d8;
-  --da-tertiary: #00d1b8;
+  --da-tertiary: #8095ff;
   --da-quaternary: #ff6fe0;
 
   /*light*/
-  --la-primary: #6911d4;
+  --la-primary: #5a1af5;
   --la-primary-muted: #e1d2f5;
   --la-secondary: #1345aa;
-  --la-tertiary: #8c33eb;
+  --la-tertiary: #5a1af5;
   --la-quaternary: #ff6fe0;
 
   /*STATUS COLOR*/

@@ -41,6 +41,7 @@
    [app.rpc.permissions :as perms]
    [app.util.blob :as blob]
    [app.util.events :as events]
+   [app.util.platform-admin :as padmin]
    [app.util.pointer-map :as pmap]
    [app.util.services :as sv]
    [app.worker :as wrk]
@@ -1042,7 +1043,7 @@
 
 (defn- delete-file
   [{:keys [::db/conn] :as cfg} {:keys [profile-id id] :as params}]
-  (check-edition-permissions! conn profile-id id)
+  (padmin/check-platform-admin! conn profile-id)
   (let [team (teams/get-team conn
                              :profile-id profile-id
                              :file-id id)
@@ -1256,7 +1257,7 @@
    ::sm/params schema:permanently-delete-team-files}
 
   [{:keys [::db/pool] :as cfg} {:keys [::rpc/profile-id team-id] :as params}]
-  (teams/check-edition-permissions! pool profile-id team-id)
+  (padmin/check-platform-admin! pool profile-id)
   (sse/response #(db/tx-run! cfg permanently-delete-team-files params)))
 
 ;; --- MUTATION COMMAND: restore-files-immediatelly

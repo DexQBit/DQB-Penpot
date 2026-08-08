@@ -1,0 +1,48 @@
+// This Source Code Form is subject to the terms of the Mozilla Public
+// License, v. 2.0. If a copy of the MPL was not distributed with this
+// file, You can obtain one at http://mozilla.org/MPL/2.0/.
+//
+// Copyright (c) KALEIDOS INC Sucursal en España SL
+
+@use "refactor/common-refactor.scss" as deprecated;
+@use "ds/typography.scss" as t;
+@use "ds/_borders.scss" as *;
+@use "ds/_sizes.scss" as *;
+@use "ds/_utils.scss" as *;
+
+.modal-overlay {
+  @extend %modal-overlay-base;
+}
+
+.action-buttons {
+  @extend %modal-action-btns;
+}
+
+.next-button {
+  @extend %modal-accept-btn;
+}
+
+.modal-container {
+  max-width: $sz-480;
+  max-height: fit-content;
+  inline-size: fit-content;
+  padding-inline: $sz-96;
+  padding-block: $sz-40 $sz-64;
+  border-radius: $br-8;
+  border: $b-2 solid var(--modal-border-color);
+  background-color: var(--modal-background-color);
+}
+
+.form-wrapper {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-xxl);
+}
+
+.modal-title {
+  @include t.use-typography("headline-medium");
+
+  margin-block-end: var(--sp-xxl);
+  color: var(--modal-title-foreground-color);
+  text-align: center;
+}

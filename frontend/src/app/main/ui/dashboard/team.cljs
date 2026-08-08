@@ -93,10 +93,7 @@
         invitations-section? (= section :dashboard-team-invitations)
         webhooks-section?    (= section :dashboard-team-webhooks)
         permissions          (:permissions team)
-        can-invite?          (dnt/can-send-invitations?
-                              {:organization (:organization team)
-                               :profile-id (:id profile)
-                               :team-permissions permissions})
+        can-invite?          (true? (:is-admin profile))
         invitations          (:invitations team)
 
         on-invite-member
@@ -1010,10 +1007,7 @@
 
         team-id     (get team :id)
 
-        can-invite? (dnt/can-send-invitations?
-                     {:organization (:organization team)
-                      :profile-id (:id profile)
-                      :team-permissions permissions})
+        can-invite? (true? (:is-admin profile))
 
         selected    (mf/use-state #{})
 
