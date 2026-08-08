@@ -10,6 +10,7 @@
    [app.common.data :as d]
    [app.common.data.macros :as dm]
    [app.common.logging :as log]
+   [app.common.time :as ct]
    [app.common.uuid :as uuid]
    [app.config :as cf]
    [app.main.data.common :as dc]
@@ -29,10 +30,17 @@
 (log/set-level! :warn)
 
 (defn- prepare-params
-  [{:keys [pages who-comment who-inspect]}]
-  {:pages pages
-   :who-comment who-comment
-   :who-inspect who-inspect})
+  [{:keys [pages who-comment who-inspect expires-in]}]
+  (let [expires-at (case expires-in
+                     "24h" (ct/in-future {:hours 24})
+                     "7d"  (ct/in-future {:days 7})
+                     "30d" (ct/in-future {:days 30})
+                     nil)]
+    (cond-> {:pages pages
+             :who-comment who-comment
+             :who-inspect who-inspect}
+      (some? expires-at)
+      (assoc :expires-at expires-at))))
 
 (mf/defc share-link-dialog
   {::mf/register modal/components
@@ -41,7 +49,9 @@
   [{:keys [file page]}]
   (let [current-page    page
         current-page-id (:id page)
+        profile         (mf/deref refs/profile)
         slinks          (mf/deref refs/share-links)
+        can-manage?     (true? (:is-admin profile))
         router          (mf/deref refs/router)
         route           (mf/deref refs/route)
         zoom-type       (mf/deref refs/viewer-zoom-type)
@@ -58,7 +68,8 @@
                           :all-pages false
                           :pages #{(:id page)}
                           :who-comment "team"
-                          :who-inspect "team"})
+                          :who-inspect "team"
+                          :expires-in "7d"})
         options         (deref options*)
 
         current-link
@@ -163,7 +174,12 @@
         on-comment-change
         (fn [value]
           (reset! confirm* false)
-          (swap! options* assoc :who-comment value))]
+          (swap! options* assoc :who-comment value))
+
+        on-expires-change
+        (fn [value]
+          (reset! confirm* false)
+          (swap! options* assoc :expires-in value))]
 
     [:div {:class (stl/css :share-modal)}
      [:div  {:class (stl/css :share-link-dialog)}
@@ -214,7 +230,7 @@
              :on-click try-delete-link
              :value (tr "common.share-link.destroy-link")}]
 
-           :else
+           can-manage?
            [:input
             {:type "button"
              :class (stl/css :button-active)
@@ -222,7 +238,7 @@
              :value (tr "common.share-link.get-link")}])]]
 
 
-       (when (not ^boolean confirm?)
+       (when (and can-manage? (not ^boolean confirm?))
          [:div {:class (stl/css :permissions-section)}
           [:button {:class (stl/css :manage-permissions)
                     :on-click toggle-perms-visibility}
@@ -233,6 +249,18 @@
 
           (when ^boolean perms-visible?
             [:*
+             [:div {:class (stl/css :access-mode)}
+              [:div {:class (stl/css :subtitle)}
+               (tr "common.share-link.expires")]
+              [:div {:class (stl/css :items)}
+               [:& select
+                {:class (stl/css :who-comment-select)
+                 :default-value (dm/str (:expires-in options))
+                 :options [{:value "24h" :label (tr "common.share-link.expires-24h")}
+                           {:value "7d" :label (tr "common.share-link.expires-7d")}
+                           {:value "30d" :label (tr "common.share-link.expires-30d")}
+                           {:value "never" :label (tr "common.share-link.expires-never")}]
+                 :on-change on-expires-change}]]]
              (let [all-selected? (:all-pages options)
                    pages         (->> (get-in file [:data :pages])
                                       (map #(get-in file [:data :pages-index %])))

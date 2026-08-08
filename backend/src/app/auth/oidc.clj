@@ -413,13 +413,23 @@
   (let [public (u/uri (cf/get :public-uri))]
     (str (assoc public :path "/api/auth/oidc/callback"))))
 
+(defn- google-hosted-domain
+  "Hosted domain hint for Google Workspace login (`hd` OAuth param).
+  Prefer explicit `:google-hosted-domain`, else first registration whitelist domain."
+  []
+  (or (cf/get :google-hosted-domain)
+      (first (cf/get :registration-domain-whitelist))))
+
 (defn build-auth-redirect-uri
   [provider token]
-  (let [params {:client_id (:client-id provider)
-                :redirect_uri (build-redirect-uri)
-                :response_type "code"
-                :state token
-                :scope (str/join " " (:scopes provider []))}
+  (let [params (cond-> {:client_id (:client-id provider)
+                        :redirect_uri (build-redirect-uri)
+                        :response_type "code"
+                        :state token
+                        :scope (str/join " " (:scopes provider []))}
+                 (= "google" (:type provider))
+                 (assoc :hd (google-hosted-domain)))
+        params (d/without-nils params)
         query  (u/map->query-string params)]
     (-> (u/uri (:auth-uri provider))
         (assoc :query query)
@@ -915,15 +925,16 @@
                 info     (get-info cfg provider state code)
                 profile  (get-profile cfg (:email info))]
 
+            ;; Always enforce domain whitelist when enabled (new and existing users).
             (cond
+              (and (email.whitelist/enabled? cfg)
+                   (not (email.whitelist/contains? cfg (:email info))))
+              (redirect-with-error "email-domain-not-allowed")
+
               (not profile)
               (cond
                 (and (email.blacklist/enabled? cfg)
                      (email.blacklist/contains? cfg (:email info)))
-                (redirect-with-error "email-domain-not-allowed")
-
-                (and (email.whitelist/enabled? cfg)
-                     (not (email.whitelist/contains? cfg (:email info))))
                 (redirect-with-error "email-domain-not-allowed")
 
                 :else

@@ -208,6 +208,8 @@
     [:gitlab-client-secret {:optional true} :string]
     [:google-client-id {:optional true} :string]
     [:google-client-secret {:optional true} :string]
+    ;; Google Workspace hosted-domain hint (`hd`); falls back to registration whitelist.
+    [:google-hosted-domain {:optional true} :string]
     [:oidc-client-id {:optional true} :string]
     [:oidc-user-info-source {:optional true} [:enum "auto" "userinfo" "token"]]
     [:oidc-client-secret {:optional true} :string]

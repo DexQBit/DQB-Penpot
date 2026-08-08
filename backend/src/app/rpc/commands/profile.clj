@@ -130,7 +130,10 @@
   (try
     (let [profile (-> (get-profile pool profile-id)
                       (strip-private-attrs)
-                      (update :props filter-props))]
+                      (update :props filter-props)
+                      (as-> $ (assoc $ :is-admin
+                                     (contains? (or (cf/get :admins) #{})
+                                                (:email $)))))]
       (with-nitrate-licence profile cfg))
 
     (catch Throwable cause

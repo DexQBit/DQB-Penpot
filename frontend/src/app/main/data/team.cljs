@@ -199,19 +199,15 @@
   (ptk/reify ::check-and-invite-members
     ptk/WatchEvent
     (watch [_ state _]
-      (let [profile-id (dm/get-in state [:profile :id])]
-        (with-refreshed-team team-id
-          (fn [team]
-            (let [organization         (:organization team)
-                  can-invite? (cto/can-send-invitations?
-                               {:organization organization
-                                :profile-id profile-id
-                                :team-permissions (:permissions team)})]
-              (rx/of (if can-invite?
-                       (check-new-team-members-permission-and-show-invite-members {:team team
-                                                                                   :origin origin
-                                                                                   :invite-email invite-email})
-                       (modal/show :no-permission-modal {:type :invite-members}))))))))))
+      (let [platform-admin? (true? (dm/get-in state [:profile :is-admin]))]
+        (if platform-admin?
+          (with-refreshed-team team-id
+            (fn [team]
+              (rx/of (check-new-team-members-permission-and-show-invite-members
+                      {:team team
+                       :origin origin
+                       :invite-email invite-email}))))
+          (rx/of (modal/show :no-permission-modal {:type :invite-members})))))))
 
 ;; --- EVENT: fetch-members
 

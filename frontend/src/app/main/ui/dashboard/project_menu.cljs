@@ -26,6 +26,9 @@
   (let [top  (or top 0)
         left (or left 0)
 
+        profile         (mf/deref refs/profile)
+        platform-admin? (true? (:is-admin profile))
+
         current-team-id (mf/use-ctx ctx/current-team-id)
         teams           (mf/deref refs/teams)
         teams           (-> teams (dissoc current-team-id) vals vec)
@@ -111,7 +114,7 @@
             :handler on-import-files})
          (when-not (:is-default project)
            {:name :separator})
-         (when-not (:is-default project)
+         (when (and (not (:is-default project)) platform-admin?)
            {:name    (tr "labels.delete")
             :id      "project-delete"
             :handler on-delete})]]
