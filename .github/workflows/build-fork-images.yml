@@ -27,7 +27,6 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  NAMESPACE: ghcr.io/${{ github.repository_owner }}/penpot
 
 jobs:
   build-and-push:
@@ -40,6 +39,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Set namespace
+        run: |
+          # GHCR/Docker repository names must be lowercase
+          OWNER=$(echo '${{ github.repository_owner }}' | tr '[:upper:]' '[:lower:]')
+          echo "NAMESPACE=ghcr.io/${OWNER}/penpot" >> "$GITHUB_ENV"
+          echo "Using namespace: ghcr.io/${OWNER}/penpot"
 
       - name: Set image tag
         id: meta
